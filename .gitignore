@@ -1,10 +1,8 @@
 venv
 .idea
 
-# Ignorar diretórios __pycache__ em qualquer lugar do projeto
 **/__pycache__/
 
-# Outros arquivos e diretórios que você quer ignorar
 *.pyc
 *.pyo
 *.pyd
