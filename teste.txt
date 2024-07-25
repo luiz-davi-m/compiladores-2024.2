@@ -1,4 +1,8 @@
-function int fSoma(int a, int b)
-{
-    return a +b;
+func int fsomar(int a, int vb) {
+    return a+b;
+}
+
+int vSoma = fsomar(1,2);
+if (vSoma >= 2) {
+    print(vSoma)
 }

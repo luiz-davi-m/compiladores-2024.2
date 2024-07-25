@@ -12,6 +12,17 @@ if __name__ == '__main__':
     except Exception:
         print('Error: path to progam is not valid!')
 
-    analisadorLexico = AnalisadorLexico(programa)
 
-    print(analisadorLexico.getPrograma())
+    try:
+
+        analisadorLexico = AnalisadorLexico(programa)
+
+        tabelaDeTokens = analisadorLexico.analisar()
+
+        for token in analisadorLexico.getToken():
+            print(token)
+    except Exception as e:
+        print(e)
+
+
+
