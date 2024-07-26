@@ -1,1 +1,9 @@
-int vSoma = 1 +1;
+program {
+    func int soma(int a, int b) {
+        return a + b
+    }
+
+    int soma = call func soma(1,2);
+
+    print(soma);
+} end

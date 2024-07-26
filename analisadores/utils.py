@@ -9,25 +9,20 @@ tokens = {
     "/": "DIV",
     ",": "COMMA",
     ";": "SEMICOLON",
-    "v": "VAR_ID",
-    "f": "FUNC_ID",
-    "p": "PROC_ID",
-    "id": "ID",
-    "num": "NUM",
-    "word": "WORD"
+    "num": "NUM"
+
 }
 
-tokensPalavrasReservadas = {
+reservedWords = {
     "program": "PROGRAM",
     "end": "END",
     "func": "FUNC",
     "proc": "PROC",
     "call": "CALL",
     "int": "INT",
-    "boolean": "BOOLEAN",
-    "string": "STRING",
-    "true": "BOOL",
-    "false": "BOOL",
+    "bool": "BOOL",
+    "True": "BOOLEAN",
+    "False": "BOOLEAN",
     "return": "RETURN",
     "if": "IF",
     "endif": "ENDIF",

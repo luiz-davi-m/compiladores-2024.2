@@ -17,10 +17,11 @@ if __name__ == '__main__':
 
         analisadorLexico = AnalisadorLexico(programa)
 
-        tabelaDeTokens = analisadorLexico.analisar()
+        tabelaDeTokens = analisadorLexico.scan()
 
         for token in analisadorLexico.getToken():
             print(token)
+        
     except Exception as e:
         print(e)
 
