@@ -1,4 +1,5 @@
 from analisadores.analisadorLexico import AnalisadorLexico
+from analisadores.analisadorSintatico import AnalisadorSintatico
 
 import sys
 
@@ -19,8 +20,12 @@ if __name__ == '__main__':
 
         tabelaDeTokens = analisadorLexico.scan()
 
-        for token in analisadorLexico.getToken():
-            print(token)
+        analisadorSintatico = AnalisadorSintatico(tabelaDeTokens)
+
+        analisadorSintatico.start()
+
+        # for token in analisadorSintatico.getTokens():
+        #     print(token)
         
     except Exception as e:
         print(e)
