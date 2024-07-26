@@ -93,6 +93,27 @@ class AnalisadorLexico:
                     )
                 )
 
+            # Strings
+            elif char == '"' or char == "'":
+                delimitador = char
+                while self.lookAhead() != delimitador and self.lookAhead() != "\0":
+                    if self.lookAhead() == "\\":
+                        self.nextChar()
+                    self.nextChar()
+                if self.lookAhead() == delimitador:
+                    self.nextChar()
+                    self.tokens.append(
+                        Token(
+                            tokens["string_lex"],
+                            self.programa[self.inicio:self.atual],
+                            self.linha
+                        )
+                    )
+                else:
+                    raise Exception(f"String inválida na linha {self.linha}")
+
+
+            # Variáveis / Funções e procedimentos 
             elif char == "v" or char == "f" or char == "p":
                 tipoIdentificar = tokens[char]
 
@@ -174,7 +195,7 @@ class AnalisadorLexico:
                 return "GREATEREQUAL"
             else:  # (">")
                 return "GREATER"
-
+    
 
     # Varre o código tentando identificar palavras reservadas
     def analisarPalavrasReservadas(self):
@@ -205,15 +226,15 @@ class AnalisadorLexico:
                     i.tipo = tokensPalavrasReservadas[i.lexema]
 
                 # Tipo Booleano
-                elif i.lexema == "bool":
+                elif i.lexema == "boolean":
                     i.tipo = tokensPalavrasReservadas[i.lexema]
 
                 # Booleano Verdadeiro
-                elif i.lexema == "True":
+                elif i.lexema == "true":
                     i.tipo = tokensPalavrasReservadas[i.lexema]
 
                 # Booleano Falso
-                elif i.lexema == "False":
+                elif i.lexema == "false":
                     i.tipo = tokensPalavrasReservadas[i.lexema]
 
                 # Retorno da função
