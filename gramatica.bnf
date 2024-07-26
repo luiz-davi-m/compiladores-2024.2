@@ -1,122 +1,107 @@
 # Gramática, por VALDIR DIAS DA SILVA JÚNIOR e LUIZ DAVI MENDES DE MATOS
 
 
-# Dados básicos
+# ----------------- Dados ------------------------------------------------------
 
-<max-letter> ::=| "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
+<letter> ::=  "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z"
 
-<min-letter> ::= "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z"
+<digito> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 
-<digit> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+<num> ::= <digit> {<digit>}*
 
-<numero> ::= <digit> {<digit>}*
+<boolean> ::= "True" | "False"
 
-<identificador-var> ::= "v"{<max-letter> | <digit> | <min-letter>}*
+<type> ::= "int" | "bool"
 
-<identificador-func> ::= "f"{<max-letter> | <digit> | <min-letter>}*
+<identifier> ::= <letter> (<letter> | <num>)* 
 
-<identificador-proc> ::= "p"{<max-letter> | <digit> | <min-letter>}*
+<op_boolean> ::= == | !=  | > | < | >= | <=
 
-<boolean> ::= "true" | "false"
+<op_aritmetic> ::= + | - | * | /
 
-<especificador-tipo> ::= "int" | "boolean"
+# ----------------- Variaveis ------------------------------------------------------
 
-_____________________________________________________________________________________________________________________________________________________________________________
+<declaration_var> ::= <type> <identifier> = <end_var>;
 
-# Variáveis
+<end_var> ::= = <call_func> | <boolean> | <num> | <identifier> | <call_op>
 
-<var-declaracao> ::= <var> ";"
+# ----------------- Parametros ------------------------------------------------------
 
-<var> ::= <especificador-tipo> <identificador-var> <attr-var>
+<params> ::= <type> <identifier> (, <params> | <empty>)*
 
-<attr-var> ::= "=" <expression>
+# parametros para chamada de função pois não precisa passar o type
+<params_call> ::= <identifier> (, <params_call> | <empty>)*
 
-_____________________________________________________________________________________________________________________________________________________________________________
+# ----------------- Função ------------------------------------------------------
 
+<declaration_func> ::= func <type> <identifier> (<params>) { <block> <return_statement>};
 
-# Funções
+<call_func> ::= call func <identifier> (<params_call>);
 
-<funcao-declaracao> ::= "func" <especificador-tipo> <identificador-func> "(" <lista-parametros> ")" "{"
-                            <statement>
-                            "return " <var>
-                        "}"
-                        |
+# ----------------- Procedimento ------------------------------------------------------
 
-                        "func" <especificador-tipo> <identificador-func> "(" ")" "{"
-                            <statement>
-                            "return " <var>
-                        "}"
+<declaration_proc> ::= proc <identifier> (<params>) { <block> };
 
-<lista-parametros> ::= <parametros-declaracao> | <parametros-declaracao> "," <lista-parametros>
+<call_proc> ::= call proc <identifier> (<params_call>);
 
-<parametros-declaracao> ::= <especificador-tipo> <identificador-var>
+# ----------------- Operações ------------------------------------------------------
 
-_____________________________________________________________________________________________________________________________________________________________________________
+<call_op> ::= <num> <op_aritmetic> <call_op2> | <identifier> <op_aritmetic> <call_op2>
 
-# Procedimento
+<call_op2> ::= <num> <call_op4> | <identifier> <call_op4>
 
-<procedimento-declaracao> ::= "proc" <identificador-proc> "(" <lista-parametros> ")" "{"
-                                    <statement>
-                                "}"
+<call_op3> ::= <call_op2> | <num> 
 
-_____________________________________________________________________________________________________________________________________________________________________________
+<call_op4> ::= (<op_aritmetic> <call_op3>)* | <empty>
 
-# Start
+# ----------------- Start ------------------------------------------------------
 
-<start> ::= [+]<statement-list>
+<program> ::= program { <block> } end
 
-_____________________________________________________________________________________________________________________________________________________________________________
+# ----------------- Expression ------------------------------------------------------
 
-# Statements e Expression
+<expression> ::= <identifier> <expression2> | <num> <expression2>
 
-<statement-list> ::= <statement> <statement-list> | ε
+<expression2> ::= <op_boolean> <expression3> 
 
-<statement> ::= <var-declaracao> # Cria variável
-| <funcao-declaracao> # Cria função
-| <procedimento-declaracao> # Cria procedimento
-| "if" "(" <condicao> ")" "{" <statement-list> "}" <if-aux> # IF
-| "while" "(" <condicao> ")" "{" <statement-list> "}" # WHILE
-| "puts" <identificador-var>";"
-| "puts" <identificador-func>";" #nao pede na lista
-| "puts" <numero>";"
-| <identificador-func>";" # Chama função
-| <identificador-proc>";" # Chama procedimento
-| "break"";" # Dentro de laço apenas, sintático
-| "continue"";" # Dentro de laço apenas, sintático
+<expression3> ::= <identifier> | <num>
 
-<if-aux> ::= 'else' '{'<statement>'}'
+# ----------------- Condicional ------------------------------------------------------
 
-<expression> ::= <logical-expression>
-| <arithmetic-expression>
-| <numero>
-| <boolean>
-| <identificador-func>
-| <identificador-var>
+<if_statement> ::= if(<expression>){<block3>} endif <else_part> 
 
-_____________________________________________________________________________________________________________________________________________________________________________
+<else_part> ::= else { <block3> } endelse | <empty>
+ 
+<while_statement> ::= while(<expression>){<block2>}endwhile
 
-# Lógico
+# IF chamado somente dentro do while, pois dentro dele pode ter BREAK E CONTINUE (block2)
+<if_statement2> ::= if(<expression>){<block2>} endif <else_part2>
 
-<logical-expression> ::= <termo> <op-condicional> <termo>
+# ELSE chamado somente dentro do while, pois dentro dele pode ter BREAK E CONTINUE (block2)
+<else_part2> ::= else { <block2> } endelse | <empty>
+# ----------------- Incondicional ------------------------------------------------------
 
-<termo> ::= <identificador-var> | <numero> | <identificador-func>
+# somente pode está dentro de um WHILE, e no IF/ELSE dentro do WHILE
+<unconditional_branch> ::= continue ; | break ;
 
-_____________________________________________________________________________________________________________________________________________________________________________
+# ----------------- Return ------------------------------------------------------
 
-# Aritmético
+<return_statement> ::= return <return_statement2> ;
 
-<arithmetic-expression> ::= <termo-aritmetico> *{( "+" | "-" ) <termo-aritmetico>}
+<return_statement2> ::= <call_func> | <identifier> | <num> | <boolean>
 
-<termo-aritmetico> ::= <fator> *{ ( "*" | "/" ) <fator> }
+# ----------------- Print ------------------------------------------------------
 
-<fator> ::= <identificador-var> | <numero> | "(" <arithmetic-expression> ")"
+<print_statement> ::= print (<params_print>) ;
 
-_____________________________________________________________________________________________________________________________________________________________________________
+<params_print> ::= <identifier> | <call_func> | <call_op> | <boolean> | <num>
 
-# Condicional
+# ----------------- Blocos ------------------------------------------------------
 
-<condicao> ::= <expression> <condicao-aux>
+<block> ::= <declaration_var> | <declaration_func> | <declaration_proc> | <call_func> | <call_proc> | <print_statement> | <if_statement> | <while_statement> | <identifier> | <empty> 
 
-<condicao-aux> ::= <op-condicional> <condicao> | ε
+# block2 é o bloco que contém break/continue que só pode ser chamado dentro de um while e não pode declarar função e procedimento dentro
+<block2> ::= <declaration_var> | <call_proc> | <call_func> | <identifier> | <if_statement2> | <while_statement> | <unconditional_branch> | <print_statement> 
 
-<op-condicional> ::= "=="| "<>" | "<" |"<=" | ">" | ">="
+# block3 é o bloco do if/else, que não pode declarar função e procedimento dentro
+<block3> ::= <declaration_var> | <call_proc> | <call_func> | <identifier> | <if_statement> | <while_statement> | <print_statement> 
