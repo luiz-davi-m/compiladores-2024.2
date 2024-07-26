@@ -104,7 +104,7 @@ class AnalisadorLexico:
                     self.nextChar()
                     self.tokens.append(
                         Token(
-                            tokens["string_lex"],
+                            tokens["word"],
                             self.programa[self.inicio:self.atual],
                             self.linha
                         )
@@ -227,6 +227,10 @@ class AnalisadorLexico:
 
                 # Tipo Booleano
                 elif i.lexema == "boolean":
+                    i.tipo = tokensPalavrasReservadas[i.lexema]
+
+                # Identificador de strings
+                elif i.lexema == "string":
                     i.tipo = tokensPalavrasReservadas[i.lexema]
 
                 # Booleano Verdadeiro

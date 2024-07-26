@@ -14,7 +14,7 @@ tokens = {
     "p": "PROC_ID",
     "id": "ID",
     "num": "NUM",
-    "string_lex": "STRING_LEX"
+    "word": "WORD"
 }
 
 tokensPalavrasReservadas = {
@@ -25,6 +25,7 @@ tokensPalavrasReservadas = {
     "call": "CALL",
     "int": "INT",
     "boolean": "BOOLEAN",
+    "string": "STRING",
     "true": "BOOL",
     "false": "BOOL",
     "return": "RETURN",
