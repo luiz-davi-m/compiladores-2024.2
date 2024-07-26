@@ -277,6 +277,10 @@ class AnalisadorLexico:
                 elif i.lexema == "continue":
                     i.tipo = tokensPalavrasReservadas[i.lexema]
 
+                else:
+                    if i.tipo not in ["VAR_ID", "FUNC_ID", "PROC_ID"]:
+                        raise Exception(f"Palavra {i.lexema} não é reconhecível")
+
 
     def getToken(self):
         return self.tokens

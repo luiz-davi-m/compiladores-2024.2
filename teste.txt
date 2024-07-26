@@ -1,1 +1,1 @@
-string vstring = "aaaa";
+int vSoma = 1 +1;
