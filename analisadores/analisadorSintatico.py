@@ -1,3 +1,6 @@
+from analisadores.utils import tokens, reservedWords
+
+
 class AnalisadorSintatico:
     
     def __init__(self, tabelaDeTokens):
@@ -84,10 +87,10 @@ class AnalisadorSintatico:
             # Ordem: [escopo, tipo, tipoDoRetorno, id, [[params], [params], [params]]]
             # Obs: Params pode ser >= 0
             temp = []
-            temp.append(self.indexEscopoAtual)
-            temp.append(self.tokenAtual().linha)
+            temp.append(self.indexEscopoAtual) # salva em que escopo está
+            temp.append(self.tokenAtual().linha) # linha
             # temp.append('FUNC')
-            temp.append(self.tokenAtual().tipo)
+            temp.append(self.tokenAtual().tipo) # tipo
 
             self.declaration_func_statement(temp)
             return temp
@@ -189,7 +192,11 @@ class AnalisadorSintatico:
             return temp
 
         else:
-            return
+            if self.tokenAtual().tipo in ["BREAK", "CONTINUE"]:
+                raise Exception(f"Erro na linha: {self.tokenAtual().linha}, o tipo {self.tokenAtual().tipo} não é aceito neste bloco")
+            else:
+                return
+
 
 
     # block2 é o bloco que contém break/continue que só pode ser chamado dentro de um while
@@ -564,6 +571,7 @@ class AnalisadorSintatico:
             self.indexDaTabelaDeTokens += 1
             # identificador
             if self.tokenAtual().tipo == "ID":
+                functionLexema = self.tokenAtual().lexema
                 # Salvando o id
                 temp.append(self.tokenAtual().lexema)
                 self.indexDaTabelaDeTokens += 1
@@ -619,6 +627,9 @@ class AnalisadorSintatico:
                                         tempBlock = []
                                         # BLOCK
                                         while self.tokenAtual().tipo != "RETURN":
+                                            if self.tokenAtual().tipo == "CRIGHT":
+                                                raise Exception(f"Erro sintático: está faltando um returno na função {functionLexema}")
+                                            
                                             tempBlock.append(
                                                 self.block_statement())
 

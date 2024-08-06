@@ -1,7 +1,6 @@
 from analisadores.analisadorLexico import AnalisadorLexico
 from analisadores.analisadorSintatico import AnalisadorSintatico
 
-import sys
 
 if __name__ == '__main__':
     testPath = 'teste.txt'

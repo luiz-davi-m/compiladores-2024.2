@@ -10,7 +10,6 @@ tokens = {
     ",": "COMMA",
     ";": "SEMICOLON",
     "num": "NUM"
-
 }
 
 reservedWords = {
