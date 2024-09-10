@@ -1,25 +1,42 @@
 from analisadores.utils import tokens, reservedWords
+from analisadores.utils import arvoreExpressao
+from analisadores.utils import expressaoTresEnderecos
 
 
 class AnalisadorSintatico:
-    
     def __init__(self, tabelaDeTokens):
         self.tabelaDeTokens = tabelaDeTokens
         self.indexDaTabelaDeTokens = 0
         self.indexLookAhead = 0
+        # self.listaEscopos = []
         self.indexEscopoAtual = -1
         self.tabelaDeSimbolos = []
         # Pra saber na semantica qual declaracao de variavel no codigo tá sendo checada
         self.indexDaDeclaracaoDaVariavelAtual = -1
         self.indexEscopoAntesDaFuncao = 0
+        self.tabelaDeTresEnderecos = []
+        self.tempTresEnderecos = ''
 
+    def tokenAtual(self):
+        return self.tabelaDeTokens[self.indexDaTabelaDeTokens]
+
+    def tokenLookAhead(self):
+        self.indexLookAhead = self.indexDaTabelaDeTokens + 1
+        return self.tabelaDeTokens[self.indexLookAhead]
 
     def start(self):
+        escopoPai = self.indexEscopoAtual  # (-1 -> início)
         self.indexEscopoAtual += 1
         self.statement_list()  # Análise Sintática
+
+        # for linha in self.tabelaDeTresEnderecos:
+        #     pprint(linha)
+
+        print('\n')
+
+        self.checkSemantica()
         return
-    
-    
+
     def statement_list(self):
         if self.tokenAtual().tipo == "END":
             return
@@ -27,8 +44,7 @@ class AnalisadorSintatico:
             self.statement()
             self.statement_list()
             return
-        
-    
+
     def statement(self):
         if self.tokenAtual().tipo == "PROGRAM":
             self.indexDaTabelaDeTokens += 1
@@ -65,11 +81,7 @@ class AnalisadorSintatico:
                 + str(self.tokenAtual().linha)
             )
 
-
-    def tokenAtual(self):
-        return self.tabelaDeTokens[self.indexDaTabelaDeTokens]
-
-
+    # <block>
     def block_statement(self):
         # ESCOPO OK
         # <declaration_var>
@@ -87,10 +99,10 @@ class AnalisadorSintatico:
             # Ordem: [escopo, tipo, tipoDoRetorno, id, [[params], [params], [params]]]
             # Obs: Params pode ser >= 0
             temp = []
-            temp.append(self.indexEscopoAtual) # salva em que escopo está
-            temp.append(self.tokenAtual().linha) # linha
+            temp.append(self.indexEscopoAtual)
+            temp.append(self.tokenAtual().linha)
             # temp.append('FUNC')
-            temp.append(self.tokenAtual().tipo) # tipo
+            temp.append(self.tokenAtual().tipo)
 
             self.declaration_func_statement(temp)
             return temp
@@ -105,6 +117,17 @@ class AnalisadorSintatico:
             temp.append(self.tokenAtual().tipo)
             temp = self.declaration_proc_statement(temp)
             self.tabelaDeSimbolos.append(temp)
+
+            #  INICIO TAB 3 END - PROC
+            nomeDaFuncao = temp[3]
+            paramsDaFuncao = temp[4]
+
+            self.tabelaDeTresEnderecos.append(('label', nomeDaFuncao, 'null'))
+
+            for param in paramsDaFuncao:
+                self.tabelaDeTresEnderecos.append(('pop', param[2], 'null'))
+
+            self.tabelaDeTresEnderecos.append(('ret', 'null', 'null'))
 
             return temp
 
@@ -196,8 +219,6 @@ class AnalisadorSintatico:
                 raise Exception(f"Erro na linha: {self.tokenAtual().linha}, o tipo {self.tokenAtual().tipo} não é aceito neste bloco")
             else:
                 return
-
-
 
     # block2 é o bloco que contém break/continue que só pode ser chamado dentro de um while
     def block2_statement(self):
@@ -451,6 +472,9 @@ class AnalisadorSintatico:
                     "Erro sintatico: falta da atribuição na linha "
                     + str(self.tokenAtual().linha)
                 )
+
+            #  TRES END
+            self.tabelaDeTresEnderecos.append(('mov', temp[3], 'temp'))
         else:
             raise Exception(
                 "Erro sintatico: falta do ID na linha " +
@@ -616,6 +640,17 @@ class AnalisadorSintatico:
                                 if self.tokenAtual().tipo == "PRIGHT":
                                     self.indexDaTabelaDeTokens += 1
 
+                                    #  INICIO TAB 3 END
+                                    nomeDaFuncao = temp[4]
+                                    paramsDaFuncao = temp[5]
+
+                                    self.tabelaDeTresEnderecos.append(
+                                        ('label', nomeDaFuncao, 'null'))
+
+                                    for param in paramsDaFuncao:
+                                        self.tabelaDeTresEnderecos.append(
+                                            ('pop', param[2], 'null'))
+
                                     if self.tokenAtual().tipo == "CLEFT":
                                         # Armazendando o escopo antes de entrar na função
                                         self.indexEscopoAntesDaFuncao = (
@@ -660,7 +695,12 @@ class AnalisadorSintatico:
                                                 ):
                                                     self.indexDaTabelaDeTokens += 1
                                                     # Adiciona na tabela de símbolos
-                                                    self.tabelaDeSimbolos.append(temp)
+                                                    self.tabelaDeSimbolos.append(
+                                                        temp)
+                                                    self.tabelaDeTresEnderecos.append(
+                                                        ('push', self.tempTresEnderecos, 'null'))
+                                                    self.tabelaDeTresEnderecos.append(
+                                                        ('ret', 'null', 'null'))
                                                 else:
                                                     raise Exception(
                                                         "Erro sintatico: falta do ponto e vírgula na linha "
@@ -776,6 +816,78 @@ class AnalisadorSintatico:
                             self.indexDaTabelaDeTokens += 1
 
                             exit(0)
+
+                            #  INICIO TAB 3 END
+                            nomeDaFuncao = temp[4]
+                            paramsDaFuncao = temp[5]
+
+                            self.tabelaDeTresEnderecos.append(
+                                ('label', nomeDaFuncao, 'null'))
+
+                            for param in paramsDaFuncao:
+                                self.tabelaDeTresEnderecos.append(
+                                    ('pop', param[2], 'null'))
+
+                            self.tabelaDeTresEnderecos.append(
+                                ('push', self.tempTresEnderecos, 'null'))
+                            self.tabelaDeTresEnderecos.append(
+                                ('ret', 'null', 'null'))
+
+                            if self.tokenAtual().tipo == "CLEFT":
+                                self.indexEscopoAntesDaFuncao = self.indexEscopoAtual
+                                self.indexEscopoAtual += 1
+                                self.indexDaTabelaDeTokens += 1
+
+                                tempBlock = []
+                                # BLOCK
+                                while self.tokenAtual().tipo != "RETURN":
+                                    tempBlock.append(self.block_statement())
+
+                                temp.append(tempBlock)
+
+                                tempReturn = []
+                                # RETURN
+                                if self.tokenAtual().tipo == "RETURN":
+                                    tempReturn.append(self.indexEscopoAtual)
+                                    tempReturn.append(self.tokenAtual().tipo)
+                                    # RETURN
+                                    tempReturnParms = []
+                                    tempReturnParms = self.return_statement(
+                                        tempReturnParms
+                                    )
+
+                                    tempReturn.append(tempReturnParms)
+                                    temp.append(tempReturn)
+                                    if self.tokenAtual().tipo == "CRIGHT":
+                                        self.indexEscopoAtual = (
+                                            self.indexEscopoAntesDaFuncao
+                                        )
+                                        self.indexDaTabelaDeTokens += 1
+                                        if self.tokenAtual().tipo == "SEMICOLON":
+                                            self.indexDaTabelaDeTokens += 1
+                                            # Adiciona na tabela de símbolos
+                                            self.tabelaDeSimbolos.append(temp)
+                                        else:
+                                            raise Exception(
+                                                "Erro sintatico: falta do ponto e vírgula na linha "
+                                                + str(self.tokenAtual().linha)
+                                            )
+                                    else:
+                                        raise Exception(
+                                            "Erro sintatico: falta da chave direita na linha "
+                                            + str(self.tokenAtual().linha)
+                                        )
+                                else:
+                                    raise Exception(
+                                        "Erro sintatico: falta do retorno na linha "
+                                        + str(self.tokenAtual().linha)
+                                    )
+
+                            else:
+                                raise Exception(
+                                    "Erro sintatico: falta da chave esquerda na linha "
+                                    + str(self.tokenAtual().linha)
+                                )
                         else:
                             raise Exception(
                                 "Erro sintatico: falta do parentese direito na linha "
@@ -1226,6 +1338,10 @@ class AnalisadorSintatico:
             tempParams = []
             temp.append(self.params_print_statement(tempParams))
 
+            # TRES END
+
+            self.tabelaDeTresEnderecos.append(
+                ('print', self.tempTresEnderecos, 'null'))
             if self.tokenAtual().tipo == "PRIGHT":
                 self.indexDaTabelaDeTokens += 1
                 if self.tokenAtual().tipo == "SEMICOLON":
@@ -1644,6 +1760,19 @@ class AnalisadorSintatico:
             ):
                 tempEndVar.append(self.tokenAtual().lexema)
                 self.call_op_statement(tempEndVar)
+
+                # TRES END - OP
+
+                expressaoTratada = arvoreExpressao(tempEndVar)
+
+                var = expressaoTresEnderecos(expressaoTratada)
+
+                self.tabelaDeTresEnderecos.extend(var)
+
+                # [ 2 * [1 + 1]]
+                # ('Mov', temp, 1)
+                # ('Add', temp, 1)
+                # ('Mult', temp, 2)
             else:
                 return
         else:
@@ -1652,10 +1781,845 @@ class AnalisadorSintatico:
                 str(self.tokenAtual().linha)
             )
 
+    """
 
-    def tokenLookAhead(self):
-        self.indexLookAhead = self.indexDaTabelaDeTokens + 1
-        return self.tabelaDeTokens[self.indexLookAhead]
+    \/ Análise Semântica \/
 
-    def getTokens(self):
-        return self.tabelaDeTokens
+    """
+
+    # Não finalizado
+    # Checa semantica, se tiver tudo OK return True
+    def checkSemantica(self):
+        for k in range(len(self.tabelaDeSimbolos)):
+            simbolo = self.tabelaDeSimbolos[k][2]
+            if simbolo == "FUNC":
+                self.declaration_func_semantico(self.tabelaDeSimbolos[k])
+
+            if simbolo == "PROC":
+                self.declaration_proc_semantico(self.tabelaDeSimbolos[k])
+
+            if simbolo == "CALL":
+                if self.tabelaDeSimbolos[k][3] == "FUNC":
+                    self.call_func_semantico(
+                        self.tabelaDeSimbolos[k],
+                        4,
+                        self.tabelaDeSimbolos[k][0],
+                        5,
+                        self.tabelaDeSimbolos[k][1],
+                    )
+                if self.tabelaDeSimbolos[k][3] == "PROC":
+                    self.call_proc_semantico(
+                        self.tabelaDeSimbolos[k], 5, self.tabelaDeSimbolos[k][1]
+                    )
+            # Se for declaração de variável
+            if simbolo == "INT" or simbolo == "BOOL":
+                # print("Análise da declaração", k + 1, " -> ", self.tabelaDeSimbolos[k])
+                self.declaration_var_semantico(self.tabelaDeSimbolos[k])
+
+            if simbolo == "IF":
+                # print("Análise da declaração", k + 1, " -> ", self.tabelaDeSimbolos[k])
+                self.expression_semantico(self.tabelaDeSimbolos[k])
+
+            if simbolo == "WHILE":
+                # print("Análise da declaração", k + 1, " -> ", self.tabelaDeSimbolos[k])
+                self.expression_semantico(self.tabelaDeSimbolos[k])
+
+            # Se for chamada/atribuição de variável
+            if simbolo == "ID":
+                # print("Análise da declaração", k + 1, " -> ", self.tabelaDeSimbolos[k])
+                self.call_var_semantico(self.tabelaDeSimbolos[k])
+                # Outras condições
+
+        print("FIM DA ANÁLISE SEMÂNTICA - DEU CERTO :)\n")
+
+    def buscarNaTabelaDeSimbolos(self, simbolo, indice):
+        for k in range(len(self.tabelaDeSimbolos)):
+            if self.tabelaDeSimbolos[k][indice] == simbolo:
+                return self.tabelaDeSimbolos[k]
+
+    # TODO: Não finalizado (faltam expressões e funções)
+    def declaration_var_semantico(self, tabelaNoIndiceAtual):
+        # Se var for int
+        if tabelaNoIndiceAtual[2] == "INT":
+            simbolo = tabelaNoIndiceAtual[5][0]
+            # Exemplo: Caso se 'int b = 1';
+            #  <num>
+            if simbolo.isnumeric():
+                return True
+
+            # TODO: Caso se 'int b = call func a();' se o return de func for int
+            # <call_func>
+            if simbolo == "CALL":
+                if tabelaNoIndiceAtual[5][1] == "FUNC":
+                    for k in range(len(self.tabelaDeSimbolos)):
+                        # Procura na tabela de simbolos alguma declaração de Função
+                        if self.tabelaDeSimbolos[k][2] == "FUNC":
+                            # Vê se alguma função declarada tem o mesmo nome da função da variável
+                            if self.tabelaDeSimbolos[k][4] == tabelaNoIndiceAtual[5][2]:
+                                # Conferir se a função está declarada no escopo/linha menor ou igual
+                                if (
+                                    self.tabelaDeSimbolos[k][0]
+                                    <= tabelaNoIndiceAtual[0]
+                                ) and (
+                                    self.tabelaDeSimbolos[k][1]
+                                    <= tabelaNoIndiceAtual[1]
+                                ):
+                                    # Verificar a quantidade de parametros da função declarada com a função passada
+                                    if len(self.tabelaDeSimbolos[k][5]) == len(
+                                        tabelaNoIndiceAtual[5][3]
+                                    ):
+                                        # TODO: Verificar se as variáveis passadas na chamada, já foram declaradas
+                                        for n in range(len(tabelaNoIndiceAtual[5][3])):
+                                            # Procura tem alguma variável declarada na tabela com o nome da var passada na chamada
+                                            varDeclaradaNaTabela = self.buscarNaTabelaDeSimbolos(
+                                                tabelaNoIndiceAtual[5][3][n], 3)
+                                            if(varDeclaradaNaTabela != None):
+                                                # Conferir se a variavel está declarada no escopo/linha menor ou igual
+                                                if (varDeclaradaNaTabela[0] <= tabelaNoIndiceAtual[0]
+                                                    ) and (varDeclaradaNaTabela[1] <= tabelaNoIndiceAtual[1]):
+                                                    # Verifica se ta passando variaveis com tipo certo nos parametros
+                                                    if(varDeclaradaNaTabela[2] == self.tabelaDeSimbolos[k][5][n][1]):
+                                                        # Verifica qual o tipo de retorno da função declarada
+                                                        if self.tabelaDeSimbolos[k][3] == "INT":
+                                                            return True
+                                                        else:
+                                                            raise Exception(
+                                                                "Erro Semântico: int não recebe int na linha: "
+                                                                + str(tabelaNoIndiceAtual[1])
+                                                            )
+                                                    else:
+                                                        raise Exception(
+                                                            "Erro Semântico: tipo de variáveis incompativéis nos parametros na linha: "
+                                                            + str(tabelaNoIndiceAtual[1])
+                                                        )
+                                                else:
+                                                    raise Exception(
+                                                        "Erro Semântico: variável não declarada nos parametros na linha: "
+                                                        + str(tabelaNoIndiceAtual[1])
+                                                    )
+                                            else:
+                                                raise Exception(
+                                                    "Erro Semântico: variável não declarada nos parametros na linha: "
+                                                    + str(tabelaNoIndiceAtual[1])
+                                                )
+                                    else:
+                                        raise Exception(
+                                            "Erro Semântico: quantidade de parametros inválida na linha: "
+                                            + str(tabelaNoIndiceAtual[1])
+                                        )
+                                else:
+                                    raise Exception(
+                                        "Erro Semântico: função não declarada na linha: "
+                                        + str(tabelaNoIndiceAtual[1])
+                                    )
+
+                            else:
+                                raise Exception(
+                                    "Erro Semântico: função não declarada na linha: "
+                                    + str(tabelaNoIndiceAtual[1])
+                                )
+                else:
+                    raise Exception(
+                        "Erro Semântico: variável não pode receber procedimento na linha: "
+                        + str(tabelaNoIndiceAtual[1])
+                    )
+            # TODO: Fazer semantico caso 'int e = a + d;' 'int f = 1 + 2;' (Expressão aritmética)
+            # <call_op>
+
+            # Caso 'int b = a'; se 'int a' for declarado já
+            # <identifier>
+            if simbolo.isalpha() and simbolo != 'True' and simbolo != 'False':
+                # Buscar se o 'a' foi declarado
+                varDeclarada = self.buscarNaTabelaDeSimbolos(
+                    tabelaNoIndiceAtual[5][0], 3
+                )
+                # Se foi a varDeclarada não é none
+                if varDeclarada != None:
+                    # Verifica se 'a' foi declarada em um escopo visivel e linhas anteriores
+                    if (
+                        varDeclarada[0] <= tabelaNoIndiceAtual[0]
+                        and varDeclarada[1] <= tabelaNoIndiceAtual[1]
+                    ):
+                        # Verificar se 'a' é int
+                        if varDeclarada[2] == "INT":
+                            return True
+                        # Se não, 'int b', não pode receber 'a'
+                        else:
+                            raise Exception(
+                                "Erro Semântico: variável do tipo int não recebe int na linha: "
+                                + str(tabelaNoIndiceAtual[1])
+                            )
+                    # Se não está em um escopo visivel, é considerada como não declarada
+                    else:
+                        raise Exception(
+                            "Erro Semântico: variavel não declarada na linha: "
+                            + str(tabelaNoIndiceAtual[1])
+                        )
+                # Se varDeclarada == None, então 'a' nunca foi declarada
+                else:
+                    raise Exception(
+                        "Erro Semântico: variavel não declarada na linha: "
+                        + str(tabelaNoIndiceAtual[1])
+                    )
+            else:
+                raise Exception(
+                    "Erro Semântico: variável do tipo inteiro não recebe inteiro na linha: "
+                    + str(tabelaNoIndiceAtual[1])
+                )
+
+        # Se var for bool
+        if tabelaNoIndiceAtual[2] == "BOOL":
+
+            # Exemplo: Caso se 'int b = True';
+            #  <boolean>
+            simbolo = tabelaNoIndiceAtual[5][0]
+            if simbolo == "True" or simbolo == "False":
+                return True
+
+            if simbolo.isnumeric():
+                raise Exception(
+                    "Erro Semântico: variável do tipo boolean não recebe boolean na linha: "
+                    + str(tabelaNoIndiceAtual[1])
+                )
+
+            # TODO: Fazer semantico caso 'int e = a + d;' 'int f = 1 + 2;' (Expressão aritmética)
+            if simbolo == "CALL":
+
+                if tabelaNoIndiceAtual[5][1] == "FUNC":
+                    for k in range(len(self.tabelaDeSimbolos)):
+                        # Procura na tabela de simbolos alguma declaração de Função
+                        if self.tabelaDeSimbolos[k][2] == "FUNC":
+                            # Vê se alguma função declarada tem o mesmo nome da função da variável
+                            if self.tabelaDeSimbolos[k][4] == tabelaNoIndiceAtual[5][2]:
+                                # Conferir se a função está declarada no escopo/linha menor ou igual
+                                if (
+                                    self.tabelaDeSimbolos[k][0]
+                                    <= tabelaNoIndiceAtual[0]
+                                ) and (
+                                    self.tabelaDeSimbolos[k][1]
+                                    <= tabelaNoIndiceAtual[1]
+                                ):
+                                    # Verificar a quantidade de parametros da função declarada com a função passada
+                                    if len(self.tabelaDeSimbolos[k][5]) == len(
+                                        tabelaNoIndiceAtual[5][3]
+                                    ):
+                                        # TODO: Verificar se as variáveis passadas na chamada, já foram declaradas
+                                        for n in range(len(tabelaNoIndiceAtual[5][3])):
+                                            # Procura tem alguma variável declarada na tabela com o nome da var passada na chamada
+                                            varDeclaradaNaTabela = self.buscarNaTabelaDeSimbolos(
+                                                tabelaNoIndiceAtual[5][3][n], 3)
+                                            if(varDeclaradaNaTabela != None):
+                                                # Conferir se a variavel está declarada no escopo/linha menor ou igual
+                                                if (varDeclaradaNaTabela[0] <= tabelaNoIndiceAtual[0]
+                                                    ) and (varDeclaradaNaTabela[1] <= tabelaNoIndiceAtual[1]):
+                                                    # Verifica se ta passando variaveis com tipo certo nos parametros
+                                                    if(varDeclaradaNaTabela[2] == self.tabelaDeSimbolos[k][5][n][1]):
+                                                        # Verifica qual o tipo de retorno da função declarada
+                                                        if self.tabelaDeSimbolos[k][3] == "BOOL":
+                                                            return True
+                                                        else:
+                                                            raise Exception(
+                                                                "Erro Semântico: boolean não recebe boolean na linha: "
+                                                                + str(tabelaNoIndiceAtual[1])
+                                                            )
+                                                    else:
+                                                        raise Exception(
+                                                            "Erro Semântico: tipo de variáveis incompativéis nos parametros na linha: "
+                                                            + str(tabelaNoIndiceAtual[1])
+                                                        )
+                                                else:
+                                                    raise Exception(
+                                                        "Erro Semântico: variável não declarada nos parametros na linha: "
+                                                        + str(tabelaNoIndiceAtual[1])
+                                                    )
+                                            else:
+                                                raise Exception(
+                                                    "Erro Semântico: variável não declarada nos parametros na linha: "
+                                                    + str(tabelaNoIndiceAtual[1])
+                                                )
+                                    else:
+                                        raise Exception(
+                                            "Erro Semântico: quantidade de parametros inválida na linha: "
+                                            + str(tabelaNoIndiceAtual[1])
+                                        )
+                                else:
+                                    raise Exception(
+                                        "Erro Semântico: função não declarada na linha: "
+                                        + str(tabelaNoIndiceAtual[1])
+                                    )
+
+                            else:
+                                raise Exception(
+                                    "Erro Semântico: função não declarada na linha: "
+                                    + str(tabelaNoIndiceAtual[1])
+                                )
+                else:
+                    raise Exception(
+                        "Erro Semântico: variável não pode receber procedimento na linha: "
+                        + str(tabelaNoIndiceAtual[1])
+                    )
+
+            # Caso 'bool b = a'; se 'bool a' for declarado já
+            # <identifier>
+            if simbolo.isalpha() and simbolo != 'True' and simbolo != 'False':
+                # Buscar se o 'a' foi declarado
+                varDeclarada = self.buscarNaTabelaDeSimbolos(
+                    tabelaNoIndiceAtual[5][0], 3
+                )
+                # Se foi a varDeclarada não é none
+                if varDeclarada != None:
+                    # Verifica se 'a' foi declarada em um escopo visivel e linhas anteriores
+                    if (
+                        varDeclarada[0] <= tabelaNoIndiceAtual[0]
+                        and varDeclarada[1] <= tabelaNoIndiceAtual[1]
+                    ):
+                        # Verificar se 'a' é bool
+                        if varDeclarada[2] == "BOOL":
+                            if (varDeclarada[5][0] == 'True' or varDeclarada[5][0] == 'False'):
+                                return True
+                            else:
+                                raise Exception(
+                                    "Erro Semântico: variável do tipo boolean não recebe boolean na linha: "
+                                    + str(tabelaNoIndiceAtual[1])
+                                )
+                        # Se não, 'bool b', não pode receber 'a'
+                        else:
+                            raise Exception(
+                                "Erro Semântico: variável do tipo boolean não recebe boolean na linha: "
+                                + str(tabelaNoIndiceAtual[1])
+                            )
+                    # Se não está em um escopo visivel, é considerada como não declarada
+                    else:
+                        raise Exception(
+                            "Erro Semântico: variavel não declarada na linha: "
+                            + str(tabelaNoIndiceAtual[1])
+                        )
+                # Se varDeclarada == None, então 'a' nunca foi declarada
+                else:
+                    raise Exception(
+                        "Erro Semântico: variavel não declarada na linha: "
+                        + str(tabelaNoIndiceAtual[1])
+                    )
+
+            else:
+                raise Exception(
+                    "Erro Semântico: variável do tipo boolean não recebe boolean na linha: "
+                    + str(tabelaNoIndiceAtual[1])
+                )
+
+    # TODO: Não finalizado (faltam expressões e funções)
+    # TODO: Resolver problema de escopo antigo sendo visivel
+    def call_var_semantico(self, simbolo):
+        flag = False
+        for k in range(len(self.tabelaDeSimbolos)):
+            if (
+                self.tabelaDeSimbolos[k][2] == "INT"
+                or self.tabelaDeSimbolos[k][2] == "BOOL"
+            ):
+                # Verificando se há duas var. com msm nome
+                if self.tabelaDeSimbolos[k][3] == simbolo[3]:
+                    # Se houver, verifica se a variavel está visivel no
+                    # escopo da qual foi chamada
+                    if self.tabelaDeSimbolos[k][0] <= simbolo[0]:
+                        if self.tabelaDeSimbolos[k][1] <= simbolo[1]:
+                            flag = True  # Flag para verificar se a chamada tá ok
+                            # Chamada de método para verificar o tipo da variavel
+                            # que está sendo atribuída
+                            self.verificarTipoCallVar(
+                                self.tabelaDeSimbolos[k], simbolo)
+                            break
+
+            # Buscar em parametros de PROC
+            elif self.buscarParamsProc(simbolo) == True:
+                flag = True
+                break
+
+            # Buscar em parametros de FUNC
+            elif self.buscarParamsFunc(simbolo, 3) == True:
+                flag = True
+                break
+
+        # Se der errado a declaração:
+        if flag == False:
+            raise Exception(
+                "Erro Semântico: variável não declarada na linha: " +
+                str(simbolo[1])
+            )
+
+    def buscarParamsProc(self, simbolo):
+        paramsProc = self.buscarNaTabelaDeSimbolos("PROC", 2)
+        if paramsProc != None:
+            paramsProc = paramsProc[4]
+            for k in range(len(paramsProc)):
+                if simbolo[3] == paramsProc[k][2]:
+                    if paramsProc[k][1] == "INT":
+                        if simbolo[5].isnumeric():
+                            return True
+                        if not simbolo[5].isnumeric():
+                            raise Exception(
+                                "Erro Semântico: variável do tipo int não recebe int na linha: "
+                                + str(simbolo[1])
+                            )
+                    if paramsProc[k][1] == "BOOL":
+                        # TODO: verificar posteriormente
+                        if simbolo[5] == "True" or simbolo[5] == "False":
+                            return True
+                        else:
+                            raise Exception(
+                                "Erro Semântico: variável do tipo booleano não recebe booleano na linha: "
+                                + str(simbolo[1])
+                            )
+                    break
+        else:
+            return False
+
+    def buscarParamsFunc(self, simbolo, n):
+        paramsFunc = self.buscarNaTabelaDeSimbolos("FUNC", 2)
+        if paramsFunc != None:
+            paramsFunc = paramsFunc[5]
+            for k in range(len(paramsFunc)):
+                if simbolo[n] == paramsFunc[k][2]:
+                    if paramsFunc[k][1] == "INT":
+                        if simbolo[5].isnumeric():
+                            return True
+                        if not simbolo[5].isnumeric():
+                            raise Exception(
+                                "Erro Semântico: variável do tipo int não recebe int na linha: "
+                                + str(simbolo[1])
+                            )
+                    if paramsFunc[k][1] == "BOOL":
+                        # TODO: verificar posteriormente
+                        if simbolo[5] == "True" or simbolo[5] == "False":
+                            return True
+                        else:
+                            raise Exception(
+                                "Erro Semântico: variável do tipo booleano não recebe booleano na linha: "
+                                + str(simbolo[1])
+                            )
+                    break
+        else:
+            return False
+
+    # TODO: Faltam expressões e funções
+    def verificarTipoCallVar(self, simboloDeclaradoNaTabela, simbolo):
+        if simboloDeclaradoNaTabela[2] == "INT":
+            if not simbolo[5].isnumeric():
+                raise Exception(
+                    "Erro Semântico: variável do tipo int não recebe int na linha: "
+                    + str(simbolo[1])
+                )
+        if simboloDeclaradoNaTabela[2] == "BOOL":
+            if simbolo[5] == "True" or simbolo[5] == "False":
+                return True
+            else:
+                raise Exception(
+                    "Erro Semântico: variável do tipo booleano não recebe booleano na linha: "
+                    + str(simbolo[1])
+                )
+
+    # TODO:  Faltam variaveis e funções
+    def declaration_func_semantico(self, tabelaNoIndiceAtual):
+        # print(tabelaNoIndiceAtual)
+        if tabelaNoIndiceAtual[3] == "INT":
+            if not tabelaNoIndiceAtual[7][2][0].isnumeric():
+                raise Exception(
+                    "Erro Semântico: O retorno espera um inteiro na linha: "
+                    + str(tabelaNoIndiceAtual[1])
+                )
+
+        if tabelaNoIndiceAtual[3] == "BOOL":
+            if (
+                tabelaNoIndiceAtual[7][2][0] == "True"
+                or tabelaNoIndiceAtual[7][2][0] == "False"
+            ) is False:
+                raise Exception(
+                    "Erro Semântico: O retorno espera um boolean na linha: "
+                    + str(tabelaNoIndiceAtual[1])
+                )
+
+    def call_func_semantico(self, tabelaNoIndiceAtual, n, escopo, m, linha):
+        # print(tabelaNoIndiceAtual)
+        flag = False
+        for k in range(len(self.tabelaDeSimbolos)):
+            if self.tabelaDeSimbolos[k][2] == "FUNC":
+                if self.tabelaDeSimbolos[k][4] == tabelaNoIndiceAtual[n]:
+                    if self.tabelaDeSimbolos[k][0] <= escopo:
+                        flag = True
+                        self.verificarParams(
+                            self.tabelaDeSimbolos[k],
+                            tabelaNoIndiceAtual,
+                            5,
+                            "FUNC",
+                            m,
+                            linha,
+                            escopo,
+                        )
+                        return True
+                        break
+
+        # Se der errado a declaração:
+        if flag == False:
+            raise Exception(
+                "Erro Semântico: função não declarada na linha: "
+                + str(tabelaNoIndiceAtual[1])
+            )
+
+    def verificarParams(
+        self, simboloDeclaradoNaTabela, simbolo, n, tipo, m, linha, escopo
+    ):
+        # PASSO A PASSO:
+        # 1º -> Verificar quantidade de parametros de acordo com a declaração
+        # 2º -> Se for > 0
+        # Devemos percorrer cada variavel dos parametros, então verificar em cada um o seguinte:
+        # 1º -> Verificar se já foi declarada no escopo visível ok
+        # 2º -> Verificar se o tipo na chamada é o mesmo da declaração ok
+        # 3º -> Se for sem params, prosseguir
+
+        flag = 0
+        # Verifica se a quantidade de parametros da chamada corresponde com a declaração
+        if len(simboloDeclaradoNaTabela[n]) == len(simbolo[m]):
+            # Se os parâmetros não for vazio:
+            if len(simbolo[m]) > 0:
+                # P/ cada parâmetro
+                for k in range(len(simbolo[m])):
+                    # Leitura da declaração do parametro atual
+                    for i in range(len(self.tabelaDeSimbolos)):
+                        # Busca na tabela de simbolos a variavel passada na chamada da função
+                        if self.tabelaDeSimbolos[i][3] == simbolo[m][k]:
+                            # Verifica se foi declarado em escopo/linhas anteriores
+                            if (self.tabelaDeSimbolos[i][0] <= escopo) and (
+                                self.tabelaDeSimbolos[i][1] <= linha
+                            ):
+                                # Só incrementa quando acha declaração de váriavel
+                                if (
+                                    self.tabelaDeSimbolos[i][2] == "INT"
+                                    or self.tabelaDeSimbolos[i][2] == "BOOL"
+                                ):
+                                    flag += 1
+                                    self.comparaTipoChamadaComDeclaracao(
+                                        self.tabelaDeSimbolos[i], simbolo, tipo, n
+                                    )
+                                break
+
+            # Se não tiver params
+            else:
+                return True
+        else:
+            raise Exception(
+                "Erro Semântico: quantidade de parâmetros inválido na linha: "
+                + str(linha)
+            )
+
+        if flag != len(simboloDeclaradoNaTabela[n]):
+            raise Exception(
+                "Erro Semântico: variável do parâmetro não declarada na linha: "
+                + str(linha)
+            )
+        else:
+            return True
+
+    def comparaTipoChamadaComDeclaracao(
+        self, declaracaoVarNaTabela, callFuncTabela, tipo, n
+    ):
+        declaracaoFuncNaTabela = self.buscarNaTabelaDeSimbolos(tipo, 2)
+        flag = False
+        for k in range(len(declaracaoFuncNaTabela[n])):
+            if declaracaoFuncNaTabela[n][k][1] == declaracaoVarNaTabela[2]:
+                flag = True
+                break
+
+            # Caso ele encontre um ID ao inves da declaração direta,
+            # deve buscar pra saber se o tipo corresponde
+            elif declaracaoVarNaTabela[2] == "ID":
+                tipoDeclaracaoDoID = self.buscarNaTabelaDeSimbolos("ID", 2)
+                varDeclarada = self.buscarNaTabelaDeSimbolos(
+                    tipoDeclaracaoDoID[3], 3)
+                if declaracaoFuncNaTabela[n][k][1] == varDeclarada[2]:
+                    flag = True
+                    break
+
+        if flag == False:
+            raise Exception(
+                "Erro Semântico: tipo do parâmetro inválido na linha: "
+                + str(callFuncTabela[1])
+            )
+
+    def declaration_proc_semantico(self, tabelaNoIndiceAtual):
+        # Analisar se variaveis e funções usados dentro do procedimento são passados no parametro ou se são declarados antes
+        # print(tabelaNoIndiceAtual)
+        # Quebrando no BOOL quando atualzia a variavel com outro valor
+
+        flag = False
+        cont = 0
+        for k in range(len(self.tabelaDeSimbolos)):
+            # Percorre lista de Block do PROC
+            for i in range(len(tabelaNoIndiceAtual[5])):
+                # Pega as variaveis declaradas da tabela de simbolo
+                if (
+                    self.tabelaDeSimbolos[k][2] == "BOOL"
+                    or self.tabelaDeSimbolos[k][2] == "INT"
+                ):
+                    if tabelaNoIndiceAtual[5][i] == self.tabelaDeSimbolos[k][3]:
+                        # Verificar se a variável encontrada está no escopo/linha menor ou igual
+                        if (
+                            self.tabelaDeSimbolos[k][0] <= tabelaNoIndiceAtual[0]
+                            and self.tabelaDeSimbolos[k][1] <= tabelaNoIndiceAtual[1]
+                        ):
+                            # Chamada de método para verificar o tipo da variavel
+                            # que está sendo atribuída
+                            if self.tabelaDeSimbolos[k][2] == "INT":
+                                if not tabelaNoIndiceAtual[5][i][5].isnumeric():
+                                    raise Exception(
+                                        "Erro Semântico: variável do tipo int não recebe int na linha: "
+                                        + str(tabelaNoIndiceAtual[1])
+                                    )
+                                else:
+                                    cont += 1
+                                    flag = True
+                                    break
+                                    return True
+
+                            elif self.tabelaDeSimbolos[k][2] == "BOOL":
+                                if (
+                                    tabelaNoIndiceAtual[5][i][5] == "True"
+                                    or tabelaNoIndiceAtual[5][i][5] == "False"
+                                ):
+                                    cont += 1
+                                    flag = True
+                                    break
+                                    return True
+                                else:
+                                    raise Exception(
+                                        "Erro Semântico: variável do tipo booleano não recebe booleano na linha: "
+                                        + str(tabelaNoIndiceAtual[1])
+                                    )
+
+                    else:
+                        for m in range(len(tabelaNoIndiceAtual[5])):
+                            for n in range(len(tabelaNoIndiceAtual[4])):
+                                if (
+                                    tabelaNoIndiceAtual[5][m][3]
+                                    == tabelaNoIndiceAtual[4][n][2]
+                                ):
+                                    if tabelaNoIndiceAtual[4][n][1] == "INT":
+                                        if not tabelaNoIndiceAtual[5][m][5].isnumeric():
+                                            raise Exception(
+                                                "Erro Semântico: variável do tipo int não recebe int na linha: "
+                                                + str(tabelaNoIndiceAtual[1])
+                                            )
+                                        else:
+                                            cont += 1
+                                            flag = True
+                                            break
+                                            return True
+
+                                    if tabelaNoIndiceAtual[4][n][1] == "BOOL":
+                                        if (
+                                            tabelaNoIndiceAtual[5][i][5] == "True"
+                                            or tabelaNoIndiceAtual[5][i][5] == "False"
+                                        ):
+                                            cont += 1
+                                            flag = True
+                                            break
+                                            return True
+                                        else:
+                                            raise Exception(
+                                                "Erro Semântico: variável do tipo booleano não recebe booleano na linha: "
+                                                + str(tabelaNoIndiceAtual[1])
+                                            )
+                else:
+                    for m in range(len(tabelaNoIndiceAtual[5])):
+                        for n in range(len(tabelaNoIndiceAtual[4])):
+                            if (
+                                tabelaNoIndiceAtual[5][m][3]
+                                == tabelaNoIndiceAtual[4][n][2]
+                            ):
+                                if tabelaNoIndiceAtual[4][n][1] == "INT":
+                                    if not tabelaNoIndiceAtual[5][m][5].isnumeric():
+                                        raise Exception(
+                                            "Erro Semântico: variável do tipo int não recebe int na linha: "
+                                            + str(tabelaNoIndiceAtual[1])
+                                        )
+                                    else:
+                                        cont += 1
+                                        flag = True
+                                        break
+                                        return True
+
+                                if tabelaNoIndiceAtual[4][n][1] == "BOOL":
+                                    if (
+                                        tabelaNoIndiceAtual[5][i][5] == "True"
+                                        or tabelaNoIndiceAtual[5][i][5] == "False"
+                                    ):
+                                        cont += 1
+                                        flag = True
+                                        break
+                                        return True
+                                    else:
+                                        raise Exception(
+                                            "Erro Semântico: variável do tipo booleano não recebe booleano na linha: "
+                                            + str(tabelaNoIndiceAtual[1])
+                                        )
+
+        # Se der errado a declaração:
+        if flag == False and (cont != len(tabelaNoIndiceAtual[4])):
+            raise Exception(
+                "Erro Semântico: variável não declarada na linha: "
+                + str(tabelaNoIndiceAtual[1])
+            )
+
+    def call_proc_semantico(self, tabelaNoIndiceAtual, m, linha):
+        # Analisar se o procedimento chamado já foi declarado ok
+        # Analisar se os parâmetros da chamada foram declarados antes ok
+        # Analisar se o tipo dos parâmetros da chamada são os mesmos da declaração ok
+        # Analisar se a quantidade dos parâmetros da chamada é a mesma da declaração ok
+        # print(tabelaNoIndiceAtual)
+        flag = False
+        for k in range(len(self.tabelaDeSimbolos)):
+            if self.tabelaDeSimbolos[k][2] == "PROC":
+                if self.tabelaDeSimbolos[k][3] == tabelaNoIndiceAtual[4]:
+                    if self.tabelaDeSimbolos[k][0] <= tabelaNoIndiceAtual[0]:
+                        flag = True
+                        self.verificarParams(
+                            self.tabelaDeSimbolos[k],
+                            tabelaNoIndiceAtual,
+                            4,
+                            "PROC",
+                            m,
+                            linha,
+                            tabelaNoIndiceAtual[0],
+                        )
+                        break
+
+        # Se der errado a declaração:
+        if flag == False:
+            raise Exception(
+                "Erro Semântico: procedimento não declarado na linha: "
+                + str(tabelaNoIndiceAtual[1])
+            )
+
+    def expression_semantico(self, tabelaNoIndiceAtual):
+        buscaParam1 = self.buscarNaTabelaDeSimbolos(
+            tabelaNoIndiceAtual[3][0], 3)
+        buscaParam2 = self.buscarNaTabelaDeSimbolos(
+            tabelaNoIndiceAtual[3][2], 3)
+
+        if (tabelaNoIndiceAtual[3][0]).isnumeric() and (
+            tabelaNoIndiceAtual[3][2]
+        ).isnumeric():
+            return True
+
+        elif (
+            tabelaNoIndiceAtual[3][0].isalpha(
+            ) and tabelaNoIndiceAtual[3][2].isalpha()
+        ):
+            if buscaParam1 != None and buscaParam2 != None:
+                if buscaParam1[2] == "INT" and buscaParam2[2] != "INT":
+                    raise Exception(
+                        "Erro Semântico: Não é possível comparar dois tipos diferentes na linha: "
+                        + str(tabelaNoIndiceAtual[1])
+                    )
+                if buscaParam2[2] == "INT" and buscaParam1[2] != "INT":
+                    raise Exception(
+                        "Erro Semântico: Não é possível comparar dois tipos diferentes na linha: "
+                        + str(tabelaNoIndiceAtual[1])
+                    )
+
+                if buscaParam2[2] == "INT" and buscaParam1[2] == "INT":
+                    if (buscaParam1[0] <= tabelaNoIndiceAtual[0]) and (
+                        buscaParam2[0] <= tabelaNoIndiceAtual[0]
+                    ):
+                        return True
+                    else:
+                        raise Exception(
+                            "Erro Semântico: Variável não declarada na linha: "
+                            + str(tabelaNoIndiceAtual[1])
+                        )
+                if buscaParam2[2] == "BOOL" and buscaParam1[2] == "BOOL":
+                    if (buscaParam1[0] <= tabelaNoIndiceAtual[0]) and (
+                        buscaParam2[0] <= tabelaNoIndiceAtual[0]
+                    ):
+                        if (
+                            tabelaNoIndiceAtual[3][1] == "=="
+                            or tabelaNoIndiceAtual[3][1] == "!="
+                        ):
+                            return True
+                        else:
+                            raise Exception(
+                                "Erro Semântico: Não é possível fazer este tipo de comparação com Boolean na linha: "
+                                + str(tabelaNoIndiceAtual[1])
+                            )
+                    else:
+                        raise Exception(
+                            "Erro Semântico: Variável não declarada na linha: "
+                            + str(tabelaNoIndiceAtual[1])
+                        )
+
+                if buscaParam2[2] == "INT" and buscaParam1[2] != "BOOL":
+                    raise Exception(
+                        "Erro Semântico: Não é possível comparar dois tipos diferentes na linha: "
+                        + str(tabelaNoIndiceAtual[1])
+                    )
+                if buscaParam2[2] == "BOOL" and buscaParam1[2] != "INT":
+                    raise Exception(
+                        "Erro Semântico: Não é possível comparar dois tipos diferentes na linha: "
+                        + str(tabelaNoIndiceAtual[1])
+                    )
+            else:
+                raise Exception(
+                    "Erro Semântico: variavel não declarada na linha: "
+                    + str(tabelaNoIndiceAtual[1])
+                )
+
+        elif (
+            tabelaNoIndiceAtual[3][0].isalpha()
+            and (tabelaNoIndiceAtual[3][2]).isnumeric()
+        ):
+            if buscaParam1 != None:
+                if buscaParam1[2] != "INT":
+                    raise Exception(
+                        "Erro Semântico: Não é possível comparar dois tipos diferentes na linha: "
+                        + str(tabelaNoIndiceAtual[1])
+                    )
+                else:
+                    if buscaParam1[0] <= tabelaNoIndiceAtual[0]:
+                        return True
+                    else:
+                        raise Exception(
+                            "Erro Semântico: Variável não declarada na linha: "
+                            + str(tabelaNoIndiceAtual[1])
+                        )
+            else:
+                raise Exception(
+                    "Erro Semântico: variavel não declarada na linha: "
+                    + str(tabelaNoIndiceAtual[1])
+                )
+
+        elif (tabelaNoIndiceAtual[3][0]).isnumeric() and tabelaNoIndiceAtual[3][
+            2
+        ].isalpha():
+            if buscaParam2 != None:
+                if buscaParam2[2] != "INT":
+                    raise Exception(
+                        "Erro Semântico: Não é possível comparar dois tipos diferentes na linha: "
+                        + str(tabelaNoIndiceAtual[1])
+                    )
+                else:
+                    if buscaParam2[0] <= tabelaNoIndiceAtual[0]:
+                        return True
+                    else:
+                        raise Exception(
+                            "Erro Semântico: Variável não declarada na linha: "
+                            + str(tabelaNoIndiceAtual[1])
+                        )
+            else:
+                raise Exception(
+                    "Erro Semântico: variavel não declarada na linha: "
+                    + str(tabelaNoIndiceAtual[1])
+                )
+
+        else:
+            raise Exception(
+                "Erro Semântico: parametros inválidos na linha: "
+                + str(tabelaNoIndiceAtual[1])
+            )

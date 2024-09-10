@@ -22,9 +22,6 @@ if __name__ == '__main__':
         analisadorSintatico = AnalisadorSintatico(tabelaDeTokens)
 
         analisadorSintatico.start()
-
-        # for token in analisadorSintatico.getTokens():
-        #     print(token)
         
     except Exception as e:
         print(e)
