@@ -1,6 +1,7 @@
 from analisadores.utils import tokens, reservedWords
 from analisadores.utils import arvoreExpressao
 from analisadores.utils import expressaoTresEnderecos
+from pprintpp import pprint
 
 
 class AnalisadorSintatico:
@@ -29,13 +30,19 @@ class AnalisadorSintatico:
         self.indexEscopoAtual += 1
         self.statement_list()  # Análise Sintática
 
-        # for linha in self.tabelaDeTresEnderecos:
-        #     pprint(linha)
+        print("\n=-=-=-=-=-=-=-=-=-=-=-=-=-= TABELA DE SIMBOLOS =-=-=-=-=-=-=-=-=-=-=-=-=-=\n")
+        for simbolo in self.tabelaDeSimbolos:
+            pprint(simbolo)
+
+        print("\n=-=-=-=-=-=-=-=-=-=-=-=-=-= TABELA DE 3 ENDEREÇOS =-=-=-=-=-=-=-=-=-=-=-=-=-=\n")
+        for linha in self.tabelaDeTresEnderecos:
+            pprint(linha)
 
         print('\n')
 
         self.checkSemantica()
         return
+
 
     def statement_list(self):
         if self.tokenAtual().tipo == "END":
@@ -44,6 +51,12 @@ class AnalisadorSintatico:
             self.statement()
             self.statement_list()
             return
+
+    """
+
+    \/ Análise Sintática e Tabela de 3 Endereços \/
+
+    """
 
     def statement(self):
         if self.tokenAtual().tipo == "PROGRAM":
@@ -101,7 +114,6 @@ class AnalisadorSintatico:
             temp = []
             temp.append(self.indexEscopoAtual)
             temp.append(self.tokenAtual().linha)
-            # temp.append('FUNC')
             temp.append(self.tokenAtual().tipo)
 
             self.declaration_func_statement(temp)
@@ -113,7 +125,6 @@ class AnalisadorSintatico:
             temp = []
             temp.append(self.indexEscopoAtual)
             temp.append(self.tokenAtual().linha)
-            # temp.append('PROC')
             temp.append(self.tokenAtual().tipo)
             temp = self.declaration_proc_statement(temp)
             self.tabelaDeSimbolos.append(temp)
@@ -1811,6 +1822,7 @@ class AnalisadorSintatico:
                     self.call_proc_semantico(
                         self.tabelaDeSimbolos[k], 5, self.tabelaDeSimbolos[k][1]
                     )
+
             # Se for declaração de variável
             if simbolo == "INT" or simbolo == "BOOL":
                 # print("Análise da declaração", k + 1, " -> ", self.tabelaDeSimbolos[k])
@@ -1923,6 +1935,7 @@ class AnalisadorSintatico:
                         "Erro Semântico: variável não pode receber procedimento na linha: "
                         + str(tabelaNoIndiceAtual[1])
                     )
+                
             # TODO: Fazer semantico caso 'int e = a + d;' 'int f = 1 + 2;' (Expressão aritmética)
             # <call_op>
 
@@ -2217,7 +2230,7 @@ class AnalisadorSintatico:
                     + str(simbolo[1])
                 )
 
-    # TODO:  Faltam variaveis e funções
+    # TODO:  Faltam variaveis, funções e escopo
     def declaration_func_semantico(self, tabelaNoIndiceAtual):
         # print(tabelaNoIndiceAtual)
         if tabelaNoIndiceAtual[3] == "INT":
@@ -2473,7 +2486,6 @@ class AnalisadorSintatico:
         # Analisar se os parâmetros da chamada foram declarados antes ok
         # Analisar se o tipo dos parâmetros da chamada são os mesmos da declaração ok
         # Analisar se a quantidade dos parâmetros da chamada é a mesma da declaração ok
-        # print(tabelaNoIndiceAtual)
         flag = False
         for k in range(len(self.tabelaDeSimbolos)):
             if self.tabelaDeSimbolos[k][2] == "PROC":
